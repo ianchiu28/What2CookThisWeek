@@ -1,5 +1,5 @@
-const CACHE_NAME = 'what2cookthisweek-v2';
-const ASSETS = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/icon.svg'];
+const CACHE_NAME = 'what2cookthisweek-v1.0.1';
+const ASSETS = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
