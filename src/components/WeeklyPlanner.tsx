@@ -1,4 +1,5 @@
-import type { Dish, WeeklyPlan } from '../db';
+import { useMemo } from 'react';
+import type { Dish, MealType, WeeklyPlan } from '../db';
 import { DAYS, MEAL_TYPES } from '../planner';
 
 type WeeklyPlannerProps = {
@@ -8,23 +9,51 @@ type WeeklyPlannerProps = {
   canGenerate: boolean;
 };
 
-export function WeeklyPlanner({ dishes, weeklyPlans, onGenerate, canGenerate }: WeeklyPlannerProps) {
-  function getDishName(plan: WeeklyPlan) {
-    const dish = dishes.find((item) => item.id === plan.dishId);
-    return dish?.name ?? '尚未安排';
-  }
+type VisibleMeal = {
+  meal: MealType;
+  label: string;
+  plans: WeeklyPlan[];
+};
 
-  const visibleDays = DAYS.map((dayName, day) => ({
-    day,
-    dayName,
-    meals: MEAL_TYPES.map(({ value, label }) => ({
-      meal: value,
-      label,
-      plans: weeklyPlans
-        .filter((plan) => plan.day === day && plan.meal === value)
-        .sort((a, b) => a.slot - b.slot),
-    })).filter((meal) => meal.plans.length > 0),
-  })).filter((day) => day.meals.length > 0);
+type VisibleDay = {
+  day: number;
+  dayName: string;
+  meals: VisibleMeal[];
+};
+
+function planKey(day: number, meal: MealType) {
+  return `${day}-${meal}`;
+}
+
+export function WeeklyPlanner({ dishes, weeklyPlans, onGenerate, canGenerate }: WeeklyPlannerProps) {
+  const dishNames = useMemo(() => new Map(dishes.map((dish) => [dish.id, dish.name])), [dishes]);
+
+  const visibleDays = useMemo<VisibleDay[]>(() => {
+    const plansByMeal = new Map<string, WeeklyPlan[]>();
+
+    weeklyPlans.forEach((plan) => {
+      const key = planKey(plan.day, plan.meal);
+      plansByMeal.set(key, [...(plansByMeal.get(key) ?? []), plan]);
+    });
+
+    plansByMeal.forEach((plans) => {
+      plans.sort((a, b) => a.slot - b.slot);
+    });
+
+    return DAYS.map((dayName, day) => ({
+      day,
+      dayName,
+      meals: MEAL_TYPES.map(({ value, label }) => ({
+        meal: value,
+        label,
+        plans: plansByMeal.get(planKey(day, value)) ?? [],
+      })).filter((meal) => meal.plans.length > 0),
+    })).filter((day) => day.meals.length > 0);
+  }, [weeklyPlans]);
+
+  function getDishName(plan: WeeklyPlan) {
+    return dishNames.get(plan.dishId) ?? '尚未安排';
+  }
 
   return (
     <section className="card menu-card">

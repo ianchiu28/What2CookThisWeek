@@ -9,16 +9,40 @@ export const DISH_CATEGORIES: Array<{ value: DishCategory; label: string }> = [
   { value: 'soup', label: '湯' },
 ];
 
+export type DishFormValue = {
+  name: string;
+  mealTypes: MealType[];
+  category: DishCategory;
+};
+
 type DishFormProps = {
-  onAddDish: (dish: { name: string; mealTypes: MealType[]; category: DishCategory }) => Promise<void>;
+  onSubmitDish: (dish: DishFormValue) => Promise<void>;
   className?: string;
+  title?: string;
+  submitLabel?: string;
+  initialDish?: DishFormValue;
+  categoryInputName?: string;
   onCancel?: () => void;
 };
 
-export function DishForm({ onAddDish, className = 'card dish-form', onCancel }: DishFormProps) {
-  const [name, setName] = useState('');
-  const [mealTypes, setMealTypes] = useState<MealType[]>(['dinner']);
-  const [category, setCategory] = useState<DishCategory>('uncategorized');
+const defaultDish: DishFormValue = {
+  name: '',
+  mealTypes: ['dinner'],
+  category: 'uncategorized',
+};
+
+export function DishForm({
+  onSubmitDish,
+  className = 'card dish-form',
+  title = '新增菜品',
+  submitLabel = '新增',
+  initialDish = defaultDish,
+  categoryInputName = 'dish-category',
+  onCancel,
+}: DishFormProps) {
+  const [name, setName] = useState(initialDish.name);
+  const [mealTypes, setMealTypes] = useState<MealType[]>(initialDish.mealTypes);
+  const [category, setCategory] = useState<DishCategory>(initialDish.category);
 
   const canSubmit = name.trim().length > 0 && mealTypes.length > 0;
 
@@ -33,15 +57,15 @@ export function DishForm({ onAddDish, className = 'card dish-form', onCancel }: 
     const trimmedName = name.trim();
     if (!trimmedName || mealTypes.length === 0) return;
 
-    await onAddDish({ name: trimmedName, mealTypes, category });
-    setName('');
-    setMealTypes(['dinner']);
-    setCategory('uncategorized');
+    await onSubmitDish({ name: trimmedName, mealTypes, category });
+    setName(initialDish.name);
+    setMealTypes(initialDish.mealTypes);
+    setCategory(initialDish.category);
   }
 
   return (
     <form className={className} onSubmit={handleSubmit}>
-      <h2>新增菜品</h2>
+      <h2>{title}</h2>
       <label className="field">
         <span>菜名</span>
         <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：番茄炒蛋" />
@@ -71,7 +95,7 @@ export function DishForm({ onAddDish, className = 'card dish-form', onCancel }: 
             <label key={item.value} className="choice-chip">
               <input
                 type="radio"
-                name="dish-category"
+                name={categoryInputName}
                 checked={category === item.value}
                 onChange={() => setCategory(item.value)}
               />
@@ -88,7 +112,7 @@ export function DishForm({ onAddDish, className = 'card dish-form', onCancel }: 
           </button>
         )}
         <button type="submit" disabled={!canSubmit}>
-          新增
+          {submitLabel}
         </button>
       </div>
     </form>

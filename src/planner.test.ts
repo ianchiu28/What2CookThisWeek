@@ -7,6 +7,16 @@ const dishes: PlannerDish[] = [
   { id: 3, name: '青菜' },
 ];
 
+function setting(overrides: { day?: number; meal?: 'breakfast' | 'lunch' | 'dinner'; enabled?: boolean; dishCount?: number }) {
+  return {
+    day: 0,
+    meal: 'dinner' as const,
+    enabled: true,
+    dishCount: 1,
+    ...overrides,
+  };
+}
+
 describe('createDefaultMealSettings', () => {
   test('enables only weekday dinners with one dish', () => {
     const settings = createDefaultMealSettings();
@@ -27,9 +37,9 @@ describe('createDefaultMealSettings', () => {
 describe('generateWeeklyPlans', () => {
   test('creates slots for enabled meals only', () => {
     const settings = [
-      { day: 0, meal: 'breakfast' as const, enabled: true, dishCount: 2 },
-      { day: 0, meal: 'lunch' as const, enabled: false, dishCount: 1 },
-      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 1 },
+      setting({ meal: 'breakfast', dishCount: 2 }),
+      setting({ meal: 'lunch', enabled: false }),
+      setting({ meal: 'dinner' }),
     ];
 
     const plans = generateWeeklyPlans(dishes, settings);
@@ -43,17 +53,15 @@ describe('generateWeeklyPlans', () => {
   });
 
   test('does not repeat dishes within the same meal', () => {
-    const plans = generateWeeklyPlans(dishes, [
-      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 3 },
-    ]);
+    const plans = generateWeeklyPlans(dishes, [setting({ dishCount: 3 })]);
 
     expect(new Set(plans.map((plan) => plan.dishId)).size).toBe(3);
   });
 
   test('allows the same dish across different meals', () => {
     const plans = generateWeeklyPlans([{ id: 1, name: '番茄炒蛋' }], [
-      { day: 0, meal: 'breakfast' as const, enabled: true, dishCount: 1 },
-      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 1 },
+      setting({ meal: 'breakfast' }),
+      setting({ meal: 'dinner' }),
     ]);
 
     expect(plans).toEqual([
@@ -63,9 +71,7 @@ describe('generateWeeklyPlans', () => {
   });
 
   test('leaves extra slots unassigned when a meal needs more dishes than available', () => {
-    const plans = generateWeeklyPlans([{ id: 1, name: '番茄炒蛋' }], [
-      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 3 },
-    ]);
+    const plans = generateWeeklyPlans([{ id: 1, name: '番茄炒蛋' }], [setting({ dishCount: 3 })]);
 
     expect(plans).toEqual([
       { day: 0, meal: 'dinner', slot: 0, dishId: 1 },

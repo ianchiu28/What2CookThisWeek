@@ -3,6 +3,26 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Dish, MealSetting, WeeklyPlan } from './db';
 import App from './App';
 
+function dish(overrides: Partial<Dish> & Pick<Dish, 'id' | 'name'>): Dish {
+  return {
+    mealTypes: ['dinner'],
+    category: 'uncategorized',
+    ...overrides,
+  };
+}
+
+function mealSetting(overrides: Partial<MealSetting> & Pick<MealSetting, 'day' | 'meal'>): MealSetting {
+  return {
+    enabled: true,
+    dishCount: 1,
+    ...overrides,
+  };
+}
+
+function weeklyPlan(overrides: Partial<WeeklyPlan> & Pick<WeeklyPlan, 'day' | 'meal' | 'slot'>): WeeklyPlan {
+  return overrides;
+}
+
 const mockState = vi.hoisted(() => {
   let weeklyPlansData: WeeklyPlan[] = [];
   let mealSettingsData: MealSetting[] = [];
@@ -84,15 +104,28 @@ describe('App', () => {
 
   beforeEach(() => {
     mockState.dishesData = [
-      { id: 1, name: '番茄炒蛋', mealTypes: ['dinner'], category: 'uncategorized' },
-      { id: 2, name: '早餐蛋餅', mealTypes: ['breakfast'], category: 'vegetable' },
-      { id: 3, name: '玉米濃湯', mealTypes: ['lunch', 'dinner'], category: 'soup' },
-      { id: 4, name: '紅燒牛肉', mealTypes: ['dinner'], category: 'meat' },
+      dish({ id: 1, name: '番茄炒蛋' }),
+      dish({ id: 2, name: '早餐蛋餅', mealTypes: ['breakfast'], category: 'vegetable' }),
+      dish({ id: 3, name: '玉米濃湯', mealTypes: ['lunch', 'dinner'], category: 'soup' }),
+      dish({ id: 4, name: '紅燒牛肉', category: 'meat' }),
     ];
     mockState.weeklyPlansData = [];
     mockState.mealSettingsData = [];
     vi.clearAllMocks();
   });
+
+  async function openDishSettings() {
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+  }
+
+  async function openMealSettings() {
+    await screen.findByRole('heading', { name: '本週菜單' });
+    fireEvent.click(screen.getByRole('button', { name: '排餐設定' }));
+  }
+
+  function rowForDish(name: string) {
+    return screen.getByText(name).closest('li')!;
+  }
 
   test('shows the app title as 這週煮什麼？', async () => {
     render(<App />);
@@ -112,9 +145,7 @@ describe('App', () => {
 
   test('shows dish list as the primary dish management view', async () => {
     render(<App />);
-    await screen.findByRole('heading', { name: '本週菜單' });
-
-    fireEvent.click(screen.getByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
 
     expect(screen.getByRole('heading', { name: '菜品列表' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '新增' })).toBeInTheDocument();
@@ -126,7 +157,7 @@ describe('App', () => {
 
   test('adds a new dish from a modal with dinner and uncategorized defaults', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
     fireEvent.click(screen.getByRole('button', { name: '新增' }));
 
     const dialog = screen.getByRole('dialog', { name: '新增菜品' });
@@ -144,7 +175,7 @@ describe('App', () => {
 
   test('does not add a dish from the modal when no meal type is selected', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
     fireEvent.click(screen.getByRole('button', { name: '新增' }));
 
     const dialog = screen.getByRole('dialog', { name: '新增菜品' });
@@ -158,7 +189,7 @@ describe('App', () => {
 
   test('searches dishes by name', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
 
     fireEvent.change(screen.getByPlaceholderText('搜尋菜名'), { target: { value: '湯' } });
 
@@ -169,9 +200,9 @@ describe('App', () => {
 
   test('shows compact dish metadata and icon actions', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
 
-    const row = screen.getByText('玉米濃湯').closest('li')!;
+    const row = rowForDish('玉米濃湯');
     const details = row.querySelector('.dish-details')!;
 
     expect(details).toContainElement(within(row).getByText('玉米濃湯'));
@@ -182,7 +213,7 @@ describe('App', () => {
 
   test('hides filters by default and applies filters from the filter panel', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
 
     const searchInput = screen.getByPlaceholderText('搜尋菜名');
     expect(searchInput).toBeInTheDocument();
@@ -207,12 +238,13 @@ describe('App', () => {
 
   test('edits a dish in a modal', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
 
-    const row = screen.getByText('番茄炒蛋').closest('li')!;
+    const row = rowForDish('番茄炒蛋');
     fireEvent.click(within(row).getByRole('button', { name: '編輯 番茄炒蛋' }));
 
     const dialog = screen.getByRole('dialog', { name: '編輯菜品' });
+    expect(within(dialog).getByRole('button', { name: '儲存' })).toBeInTheDocument();
     fireEvent.change(within(dialog).getByDisplayValue('番茄炒蛋'), { target: { value: '番茄牛肉湯' } });
     fireEvent.click(within(dialog).getByLabelText('肉'));
     fireEvent.click(within(dialog).getByLabelText('午餐'));
@@ -230,9 +262,9 @@ describe('App', () => {
 
   test('deletes a dish from the icon button', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    await openDishSettings();
 
-    const row = screen.getByText('紅燒牛肉').closest('li')!;
+    const row = rowForDish('紅燒牛肉');
     fireEvent.click(within(row).getByRole('button', { name: '刪除 紅燒牛肉' }));
 
     await waitFor(() => expect(mockState.dishesDelete).toHaveBeenCalledWith(4));
@@ -257,7 +289,7 @@ describe('App', () => {
     render(<App />);
     await waitFor(() => expect(mockState.mealSettingsBulkAdd).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(screen.getByRole('button', { name: '排餐設定' }));
+    await openMealSettings();
     fireEvent.click(screen.getAllByLabelText('早餐')[0]);
 
     await waitFor(() => expect(mockState.mealSettingsPut).toHaveBeenCalled());
@@ -265,11 +297,11 @@ describe('App', () => {
   });
 
   test('generates the weekly menu from saved settings', async () => {
-    mockState.dishesData = [{ id: 1, name: '番茄炒蛋', mealTypes: ['dinner'], category: 'uncategorized' }];
+    mockState.dishesData = [dish({ id: 1, name: '番茄炒蛋' })];
     mockState.mealSettingsData = [
-      { id: 1, day: 0, meal: 'breakfast', enabled: true, dishCount: 1 },
-      { id: 2, day: 0, meal: 'lunch', enabled: false, dishCount: 1 },
-      { id: 3, day: 0, meal: 'dinner', enabled: true, dishCount: 1 },
+      mealSetting({ id: 1, day: 0, meal: 'breakfast' }),
+      mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: false }),
+      mealSetting({ id: 3, day: 0, meal: 'dinner' }),
     ];
 
     render(<App />);
@@ -284,8 +316,8 @@ describe('App', () => {
 
   test('renders generated meals grouped under 本週菜單', async () => {
     mockState.weeklyPlansData = [
-      { id: 1, day: 0, meal: 'breakfast', slot: 0, dishId: 1 },
-      { id: 2, day: 0, meal: 'dinner', slot: 0 },
+      weeklyPlan({ id: 1, day: 0, meal: 'breakfast', slot: 0, dishId: 1 }),
+      weeklyPlan({ id: 2, day: 0, meal: 'dinner', slot: 0 }),
     ];
 
     render(<App />);
@@ -297,5 +329,20 @@ describe('App', () => {
     expect(within(menuCard).getByText('番茄炒蛋')).toBeInTheDocument();
     expect(within(menuCard).getByText('晚餐')).toBeInTheDocument();
     expect(within(menuCard).getByText('尚未安排')).toBeInTheDocument();
+  });
+
+  test('renders generated meal slots in slot order', async () => {
+    mockState.dishesData = [dish({ id: 1, name: '第一道' }), dish({ id: 2, name: '第二道' })];
+    mockState.weeklyPlansData = [
+      weeklyPlan({ id: 1, day: 0, meal: 'dinner', slot: 1, dishId: 2 }),
+      weeklyPlan({ id: 2, day: 0, meal: 'dinner', slot: 0, dishId: 1 }),
+    ];
+
+    render(<App />);
+    const menu = await screen.findByRole('heading', { name: '本週菜單' });
+    const menuCard = menu.closest('section')!;
+    const items = within(menuCard).getAllByRole('listitem').map((item) => item.textContent);
+
+    expect(items).toEqual(['第一道', '第二道']);
   });
 });

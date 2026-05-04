@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Dish, DishCategory, MealType } from '../db';
 import { MEAL_TYPES } from '../planner';
 import { DISH_CATEGORIES, DishForm } from './DishForm';
@@ -32,9 +32,6 @@ export function DishList({ dishes, onAddDish, onDeleteDish, onUpdateDish }: Dish
   const [showFilters, setShowFilters] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
   const [isAddingDish, setIsAddingDish] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editMealTypes, setEditMealTypes] = useState<MealType[]>([]);
-  const [editCategory, setEditCategory] = useState<DishCategory>('uncategorized');
 
   const filteredDishes = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -47,20 +44,10 @@ export function DishList({ dishes, onAddDish, onDeleteDish, onUpdateDish }: Dish
     });
   }, [categoryFilter, dishes, mealFilter, searchTerm]);
 
-  const canSave = editName.trim().length > 0 && editMealTypes.length > 0;
   const activeFilterCount = Number(mealFilter !== 'all') + Number(categoryFilter !== 'all');
 
   function startEditing(dish: Dish) {
     setEditingDish(dish);
-    setEditName(dish.name);
-    setEditMealTypes(dish.mealTypes);
-    setEditCategory(dish.category);
-  }
-
-  function toggleEditMealType(mealType: MealType) {
-    setEditMealTypes((current) =>
-      current.includes(mealType) ? current.filter((item) => item !== mealType) : [...current, mealType],
-    );
   }
 
   async function handleAddDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory }) {
@@ -68,11 +55,10 @@ export function DishList({ dishes, onAddDish, onDeleteDish, onUpdateDish }: Dish
     setIsAddingDish(false);
   }
 
-  async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!editingDish || !canSave) return;
+  async function handleEditDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory }) {
+    if (!editingDish) return;
 
-    await onUpdateDish({ ...editingDish, name: editName.trim(), mealTypes: editMealTypes, category: editCategory });
+    await onUpdateDish({ ...editingDish, ...dish });
     setEditingDish(null);
   }
 
@@ -162,63 +148,24 @@ export function DishList({ dishes, onAddDish, onDeleteDish, onUpdateDish }: Dish
       {isAddingDish && (
         <div className="modal-backdrop">
           <div className="modal-card" role="dialog" aria-modal="true" aria-label="新增菜品">
-            <DishForm className="dish-form" onAddDish={handleAddDish} onCancel={() => setIsAddingDish(false)} />
+            <DishForm className="dish-form" onSubmitDish={handleAddDish} onCancel={() => setIsAddingDish(false)} />
           </div>
         </div>
       )}
 
       {editingDish && (
         <div className="modal-backdrop">
-          <form className="modal-card" role="dialog" aria-modal="true" aria-label="編輯菜品" onSubmit={handleEditSubmit}>
-            <h2>編輯菜品</h2>
-            <label className="field">
-              <span>菜名</span>
-              <input value={editName} onChange={(event) => setEditName(event.target.value)} />
-            </label>
-
-            <fieldset className="option-group">
-              <legend>適用餐別</legend>
-              <div className="option-row">
-                {MEAL_TYPES.map((mealType) => (
-                  <label key={mealType.value} className="choice-chip">
-                    <input
-                      type="checkbox"
-                      checked={editMealTypes.includes(mealType.value)}
-                      onChange={() => toggleEditMealType(mealType.value)}
-                    />
-                    {mealType.label}
-                  </label>
-                ))}
-              </div>
-              {editMealTypes.length === 0 && <p className="form-error">至少選一個餐別</p>}
-            </fieldset>
-
-            <fieldset className="option-group">
-              <legend>分類</legend>
-              <div className="option-row">
-                {DISH_CATEGORIES.map((item) => (
-                  <label key={item.value} className="choice-chip">
-                    <input
-                      type="radio"
-                      name="edit-dish-category"
-                      checked={editCategory === item.value}
-                      onChange={() => setEditCategory(item.value)}
-                    />
-                    {item.label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <div className="modal-actions">
-              <button type="button" className="neutral" onClick={() => setEditingDish(null)}>
-                取消
-              </button>
-              <button type="submit" disabled={!canSave}>
-                儲存
-              </button>
-            </div>
-          </form>
+          <div className="modal-card" role="dialog" aria-modal="true" aria-label="編輯菜品">
+            <DishForm
+              className="dish-form"
+              title="編輯菜品"
+              submitLabel="儲存"
+              initialDish={editingDish}
+              categoryInputName="edit-dish-category"
+              onSubmitDish={handleEditDish}
+              onCancel={() => setEditingDish(null)}
+            />
+          </div>
         </div>
       )}
     </section>
