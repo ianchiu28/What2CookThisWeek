@@ -1,12 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type DishCategory = 'vegetable' | 'meat' | 'soup' | 'uncategorized';
+
 export type Dish = {
   id?: number;
   name: string;
   lastCookedAt?: number;
+  mealTypes: MealType[];
+  category: DishCategory;
 };
-
-export type MealType = 'breakfast' | 'lunch' | 'dinner';
 
 export type MealSetting = {
   id?: number;
@@ -40,6 +43,21 @@ class CookDb extends Dexie {
       weeklyPlans: '++id, [day+meal+slot], day, meal, dishId',
       mealSettings: '++id, [day+meal], day, meal',
     });
+    this.version(3)
+      .stores({
+        dishes: '++id, name, lastCookedAt, category',
+        weeklyPlans: '++id, [day+meal+slot], day, meal, dishId',
+        mealSettings: '++id, [day+meal], day, meal',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<Dish, number>('dishes')
+          .toCollection()
+          .modify((dish) => {
+            dish.mealTypes = dish.mealTypes?.length ? dish.mealTypes : ['dinner'];
+            dish.category = dish.category ?? 'uncategorized';
+          });
+      });
   }
 }
 

@@ -13,7 +13,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -37,12 +38,21 @@ button.secondary {
   padding: 0.5rem 0.75rem;
 }
 
-input {
+button.neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+input,
+select {
   border: 1px solid #fed7aa;
   border-radius: 10px;
-  flex: 1;
   min-width: 0;
   padding: 0.75rem 1rem;
+}
+
+input {
+  flex: 1;
 }
 
 .app-shell {
@@ -96,6 +106,174 @@ p {
 
 .muted {
   color: #6b7280;
+}
+
+.dish-form,
+.field,
+.option-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field span,
+.option-group legend {
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.compact-field {
+  gap: 0.35rem;
+}
+
+.option-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.option-row,
+.dish-actions,
+.modal-actions,
+.list-toolbar,
+.filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choice-chip {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.form-error {
+  color: #b91c1c;
+  margin: 0;
+}
+
+.list-toolbar {
+  align-items: center;
+  margin: 1rem 0 0.75rem;
+}
+
+.search-filter-control {
+  align-items: center;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  display: flex;
+  flex: 1;
+  min-width: 12rem;
+  overflow: hidden;
+}
+
+.search-filter-control input {
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+}
+
+.search-filter-control .filter-icon-button {
+  background: transparent;
+  border-bottom: 0;
+  border-left: 1px solid #fed7aa;
+  border-radius: 0;
+  border-right: 0;
+  border-top: 0;
+  color: #9a3412;
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+}
+
+.filter-panel {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+}
+
+.compact-button {
+  padding: 0.5rem 0.75rem;
+}
+
+.dish-metadata {
+  color: #9a3412;
+  font-size: 0.82rem;
+}
+
+.icon-button {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  color: #9a3412;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  padding: 0;
+  width: 2rem;
+}
+
+.danger-icon-button {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.dish-item {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.dish-details {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  min-width: 0;
+}
+
+.dish-details strong {
+  min-width: 0;
+}
+
+.dish-actions {
+  flex-wrap: nowrap;
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgb(31 41 55 / 0.45);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 1rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 10;
+}
+
+.modal-card {
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgb(31 41 55 / 0.25);
+  display: grid;
+  gap: 1rem;
+  max-width: 520px;
+  padding: 1rem;
+  width: min(100%, 520px);
+}
+
+.modal-actions {
+  justify-content: flex-end;
 }
 
 .dish-list {
@@ -241,13 +419,13 @@ p {
 
 
   .row,
-  .section-heading {
+  .modal-actions {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .section-heading button,
-  .row button {
+  .row button,
+  .modal-actions button {
     width: 100%;
   }
 }

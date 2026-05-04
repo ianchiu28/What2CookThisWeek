@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { DishForm } from './components/DishForm';
 import { DishList } from './components/DishList';
 import { MealSettings } from './components/MealSettings';
 import { WeeklyPlanner } from './components/WeeklyPlanner';
-import { db, type Dish, type MealSetting, type WeeklyPlan } from './db';
+import { db, type Dish, type DishCategory, type MealSetting, type MealType, type WeeklyPlan } from './db';
 import { createDefaultMealSettings, generateWeeklyPlans } from './planner';
 
 type ActiveTab = 'menu' | 'dishes' | 'settings';
@@ -39,8 +38,13 @@ export default function App() {
     loadData();
   }, []);
 
-  async function addDish(name: string) {
-    await db.dishes.add({ name });
+  async function addDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory }) {
+    await db.dishes.add(dish);
+    await loadData();
+  }
+
+  async function updateDish(dish: Dish) {
+    await db.dishes.put(dish);
     await loadData();
   }
 
@@ -77,12 +81,7 @@ export default function App() {
         <WeeklyPlanner dishes={dishes} weeklyPlans={weeklyPlans} onGenerate={generatePlans} canGenerate={dishes.length > 0} />
       )}
 
-      {activeTab === 'dishes' && (
-        <>
-          <DishForm onAddDish={addDish} />
-          <DishList dishes={dishes} onDeleteDish={deleteDish} />
-        </>
-      )}
+      {activeTab === 'dishes' && <DishList dishes={dishes} onAddDish={addDish} onDeleteDish={deleteDish} onUpdateDish={updateDish} />}
 
       {activeTab === 'settings' && <MealSettings settings={mealSettings} onChangeSetting={updateMealSetting} />}
 

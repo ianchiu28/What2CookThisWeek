@@ -1,14 +1,19 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import type { MealSetting, WeeklyPlan } from './db';
+import type { Dish, MealSetting, WeeklyPlan } from './db';
 import App from './App';
 
 const mockState = vi.hoisted(() => {
   let weeklyPlansData: WeeklyPlan[] = [];
   let mealSettingsData: MealSetting[] = [];
 
-  const dishesAdd = vi.fn();
+  const dishesAdd = vi.fn(async (dish: Omit<Dish, 'id'>) => {
+    mockState.dishesData = [...mockState.dishesData, { ...dish, id: mockState.dishesData.length + 1 }];
+  });
   const dishesDelete = vi.fn();
+  const dishesPut = vi.fn(async (dish: Dish) => {
+    mockState.dishesData = mockState.dishesData.map((item) => (item.id === dish.id ? dish : item));
+  });
   const weeklyPlansClear = vi.fn(async () => {
     weeklyPlansData = [];
   });
@@ -23,7 +28,7 @@ const mockState = vi.hoisted(() => {
   });
 
   return {
-    dishesData: [{ id: 1, name: '番茄炒蛋' }],
+    dishesData: [{ id: 1, name: '番茄炒蛋', mealTypes: ['dinner'], category: 'uncategorized' }] as Dish[],
     get weeklyPlansData() {
       return weeklyPlansData;
     },
@@ -38,6 +43,7 @@ const mockState = vi.hoisted(() => {
     },
     dishesAdd,
     dishesDelete,
+    dishesPut,
     weeklyPlansClear,
     weeklyPlansBulkAdd,
     mealSettingsBulkAdd,
@@ -51,6 +57,7 @@ vi.mock('./db', () => ({
       orderBy: () => ({ toArray: () => Promise.resolve(mockState.dishesData) }),
       add: mockState.dishesAdd,
       delete: mockState.dishesDelete,
+      put: mockState.dishesPut,
     },
     weeklyPlans: {
       orderBy: () => ({ toArray: () => Promise.resolve(mockState.weeklyPlansData) }),
@@ -76,6 +83,12 @@ describe('App', () => {
   });
 
   beforeEach(() => {
+    mockState.dishesData = [
+      { id: 1, name: '番茄炒蛋', mealTypes: ['dinner'], category: 'uncategorized' },
+      { id: 2, name: '早餐蛋餅', mealTypes: ['breakfast'], category: 'vegetable' },
+      { id: 3, name: '玉米濃湯', mealTypes: ['lunch', 'dinner'], category: 'soup' },
+      { id: 4, name: '紅燒牛肉', mealTypes: ['dinner'], category: 'meat' },
+    ];
     mockState.weeklyPlansData = [];
     mockState.mealSettingsData = [];
     vi.clearAllMocks();
@@ -92,21 +105,137 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: '本週菜單' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '新增菜' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '菜列表' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '新增菜品' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '菜品列表' })).not.toBeInTheDocument();
     expect(screen.queryByText('本週晚餐')).not.toBeInTheDocument();
   });
 
-  test('switches between bottom tabs', async () => {
+  test('shows dish list as the primary dish management view', async () => {
     render(<App />);
     await screen.findByRole('heading', { name: '本週菜單' });
 
     fireEvent.click(screen.getByRole('button', { name: '菜品設定' }));
-    expect(screen.getByRole('heading', { name: '新增菜' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '菜列表' })).toBeInTheDocument();
+
+    expect(screen.getByRole('heading', { name: '菜品列表' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '新增' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '新增菜品' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '排餐設定' }));
     expect(screen.getByRole('heading', { name: '排餐設定' })).toBeInTheDocument();
+  });
+
+  test('adds a new dish from a modal with dinner and uncategorized defaults', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    fireEvent.click(screen.getByRole('button', { name: '新增' }));
+
+    const dialog = screen.getByRole('dialog', { name: '新增菜品' });
+    fireEvent.change(within(dialog).getByPlaceholderText('例如：番茄炒蛋'), { target: { value: '香煎雞腿' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '新增' }));
+
+    await waitFor(() => expect(mockState.dishesAdd).toHaveBeenCalledTimes(1));
+    expect(mockState.dishesAdd).toHaveBeenCalledWith({
+      name: '香煎雞腿',
+      mealTypes: ['dinner'],
+      category: 'uncategorized',
+    });
+    expect(screen.queryByRole('dialog', { name: '新增菜品' })).not.toBeInTheDocument();
+  });
+
+  test('does not add a dish from the modal when no meal type is selected', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+    fireEvent.click(screen.getByRole('button', { name: '新增' }));
+
+    const dialog = screen.getByRole('dialog', { name: '新增菜品' });
+    fireEvent.change(within(dialog).getByPlaceholderText('例如：番茄炒蛋'), { target: { value: '清炒青菜' } });
+    fireEvent.click(within(dialog).getByLabelText('晚餐'));
+
+    expect(within(dialog).getByText('至少選一個餐別')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '新增' })).toBeDisabled();
+    expect(mockState.dishesAdd).not.toHaveBeenCalled();
+  });
+
+  test('searches dishes by name', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+
+    fireEvent.change(screen.getByPlaceholderText('搜尋菜名'), { target: { value: '湯' } });
+
+    expect(screen.getByText('玉米濃湯')).toBeInTheDocument();
+    expect(screen.queryByText('番茄炒蛋')).not.toBeInTheDocument();
+    expect(screen.queryByText('早餐蛋餅')).not.toBeInTheDocument();
+  });
+
+  test('shows compact dish metadata and icon actions', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+
+    const row = screen.getByText('玉米濃湯').closest('li')!;
+    const details = row.querySelector('.dish-details')!;
+
+    expect(details).toContainElement(within(row).getByText('玉米濃湯'));
+    expect(details).toContainElement(within(row).getByText('午餐、晚餐 · 湯'));
+    expect(within(row).getByRole('button', { name: '編輯 玉米濃湯' })).toHaveTextContent('✎');
+    expect(within(row).getByRole('button', { name: '刪除 玉米濃湯' })).toHaveTextContent('×');
+  });
+
+  test('hides filters by default and applies filters from the filter panel', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+
+    const searchInput = screen.getByPlaceholderText('搜尋菜名');
+    expect(searchInput).toBeInTheDocument();
+    expect(screen.queryByLabelText('餐別篩選')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('分類篩選')).not.toBeInTheDocument();
+
+    const filterButton = screen.getByRole('button', { name: '篩選' });
+    const searchFilterControl = searchInput.closest('.search-filter-control')!;
+    expect(searchFilterControl).toContainElement(filterButton);
+    expect(filterButton).not.toHaveTextContent('篩選');
+    expect(filterButton).toHaveTextContent('⌯');
+
+    fireEvent.click(filterButton);
+    fireEvent.change(screen.getByLabelText('餐別篩選'), { target: { value: 'dinner' } });
+    fireEvent.change(screen.getByLabelText('分類篩選'), { target: { value: 'soup' } });
+
+    expect(screen.getByRole('button', { name: '篩選 · 2' })).toBeInTheDocument();
+    expect(screen.getByText('玉米濃湯')).toBeInTheDocument();
+    expect(screen.queryByText('紅燒牛肉')).not.toBeInTheDocument();
+    expect(screen.queryByText('早餐蛋餅')).not.toBeInTheDocument();
+  });
+
+  test('edits a dish in a modal', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+
+    const row = screen.getByText('番茄炒蛋').closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: '編輯 番茄炒蛋' }));
+
+    const dialog = screen.getByRole('dialog', { name: '編輯菜品' });
+    fireEvent.change(within(dialog).getByDisplayValue('番茄炒蛋'), { target: { value: '番茄牛肉湯' } });
+    fireEvent.click(within(dialog).getByLabelText('肉'));
+    fireEvent.click(within(dialog).getByLabelText('午餐'));
+    fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => expect(mockState.dishesPut).toHaveBeenCalledTimes(1));
+    expect(mockState.dishesPut).toHaveBeenCalledWith({
+      id: 1,
+      name: '番茄牛肉湯',
+      mealTypes: ['dinner', 'lunch'],
+      category: 'meat',
+    });
+    expect(screen.queryByRole('dialog', { name: '編輯菜品' })).not.toBeInTheDocument();
+  });
+
+  test('deletes a dish from the icon button', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '菜品設定' }));
+
+    const row = screen.getByText('紅燒牛肉').closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: '刪除 紅燒牛肉' }));
+
+    await waitFor(() => expect(mockState.dishesDelete).toHaveBeenCalledWith(4));
   });
 
   test('initializes default meal settings when none are saved', async () => {
@@ -136,6 +265,7 @@ describe('App', () => {
   });
 
   test('generates the weekly menu from saved settings', async () => {
+    mockState.dishesData = [{ id: 1, name: '番茄炒蛋', mealTypes: ['dinner'], category: 'uncategorized' }];
     mockState.mealSettingsData = [
       { id: 1, day: 0, meal: 'breakfast', enabled: true, dishCount: 1 },
       { id: 2, day: 0, meal: 'lunch', enabled: false, dishCount: 1 },
