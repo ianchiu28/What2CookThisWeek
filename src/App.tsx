@@ -48,7 +48,7 @@ export default function App() {
     <main className="app-shell">
       <header>
         <p className="eyebrow">What2CookThisWeek</p>
-        <h1>每週煮菜排程</h1>
+        <h1>這週煮什麼？</h1>
       </header>
       <DishForm onAddDish={addDish} />
       <DishList dishes={dishes} onDeleteDish={deleteDish} />

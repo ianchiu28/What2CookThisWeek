@@ -5,6 +5,13 @@ import { join } from 'node:path';
 const root = process.cwd();
 
 describe('PWA icon assets', () => {
+  test('manifest uses 這週煮什麼？ as the app name', () => {
+    const manifest = JSON.parse(readFileSync(join(root, 'public/manifest.webmanifest'), 'utf-8'));
+
+    expect(manifest.name).toBe('這週煮什麼？');
+    expect(manifest.short_name).toBe('這週煮什麼？');
+  });
+
   test('manifest provides PNG icons for app installation', () => {
     const manifest = JSON.parse(readFileSync(join(root, 'public/manifest.webmanifest'), 'utf-8'));
     const icons = manifest.icons as Array<{ src: string; sizes: string; type: string }>;
