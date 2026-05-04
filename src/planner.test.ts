@@ -1,33 +1,76 @@
 import { describe, expect, test } from 'vitest';
-import { generateWeeklyPlans } from './planner';
+import { createDefaultMealSettings, generateWeeklyPlans, type PlannerDish } from './planner';
+
+const dishes: PlannerDish[] = [
+  { id: 1, name: '番茄炒蛋' },
+  { id: 2, name: '滷肉' },
+  { id: 3, name: '青菜' },
+];
+
+describe('createDefaultMealSettings', () => {
+  test('enables only weekday dinners with one dish', () => {
+    const settings = createDefaultMealSettings();
+
+    expect(settings).toHaveLength(21);
+    expect(settings.filter((setting) => setting.enabled)).toEqual([
+      { day: 0, meal: 'dinner', enabled: true, dishCount: 1 },
+      { day: 1, meal: 'dinner', enabled: true, dishCount: 1 },
+      { day: 2, meal: 'dinner', enabled: true, dishCount: 1 },
+      { day: 3, meal: 'dinner', enabled: true, dishCount: 1 },
+      { day: 4, meal: 'dinner', enabled: true, dishCount: 1 },
+    ]);
+    expect(settings.filter((setting) => setting.meal !== 'dinner').every((setting) => !setting.enabled)).toBe(true);
+    expect(settings.filter((setting) => setting.day > 4).every((setting) => !setting.enabled)).toBe(true);
+  });
+});
 
 describe('generateWeeklyPlans', () => {
-  test('creates seven dinner plans with no repeated dishes when enough dishes exist', () => {
-    const dishes = Array.from({ length: 7 }, (_, index) => ({
-      id: index + 1,
-      name: `Dish ${index + 1}`,
-    }));
-
-    const plans = generateWeeklyPlans(dishes);
-
-    expect(plans).toHaveLength(7);
-    expect(plans.map((plan) => plan.day)).toEqual([0, 1, 2, 3, 4, 5, 6]);
-    expect(new Set(plans.map((plan) => plan.dishId)).size).toBe(7);
-  });
-
-  test('allows repeated dishes when fewer than seven dishes exist', () => {
-    const dishes = [
-      { id: 1, name: '番茄炒蛋' },
-      { id: 2, name: '滷肉' },
+  test('creates slots for enabled meals only', () => {
+    const settings = [
+      { day: 0, meal: 'breakfast' as const, enabled: true, dishCount: 2 },
+      { day: 0, meal: 'lunch' as const, enabled: false, dishCount: 1 },
+      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 1 },
     ];
 
-    const plans = generateWeeklyPlans(dishes);
+    const plans = generateWeeklyPlans(dishes, settings);
 
-    expect(plans).toHaveLength(7);
-    expect(plans.every((plan) => [1, 2].includes(plan.dishId))).toBe(true);
+    expect(plans).toHaveLength(3);
+    expect(plans.map(({ day, meal, slot }) => ({ day, meal, slot }))).toEqual([
+      { day: 0, meal: 'breakfast', slot: 0 },
+      { day: 0, meal: 'breakfast', slot: 1 },
+      { day: 0, meal: 'dinner', slot: 0 },
+    ]);
   });
 
-  test('returns no plans when there are no dishes', () => {
-    expect(generateWeeklyPlans([])).toEqual([]);
+  test('does not repeat dishes within the same meal', () => {
+    const plans = generateWeeklyPlans(dishes, [
+      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 3 },
+    ]);
+
+    expect(new Set(plans.map((plan) => plan.dishId)).size).toBe(3);
+  });
+
+  test('allows the same dish across different meals', () => {
+    const plans = generateWeeklyPlans([{ id: 1, name: '番茄炒蛋' }], [
+      { day: 0, meal: 'breakfast' as const, enabled: true, dishCount: 1 },
+      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 1 },
+    ]);
+
+    expect(plans).toEqual([
+      { day: 0, meal: 'breakfast', slot: 0, dishId: 1 },
+      { day: 0, meal: 'dinner', slot: 0, dishId: 1 },
+    ]);
+  });
+
+  test('leaves extra slots unassigned when a meal needs more dishes than available', () => {
+    const plans = generateWeeklyPlans([{ id: 1, name: '番茄炒蛋' }], [
+      { day: 0, meal: 'dinner' as const, enabled: true, dishCount: 3 },
+    ]);
+
+    expect(plans).toEqual([
+      { day: 0, meal: 'dinner', slot: 0, dishId: 1 },
+      { day: 0, meal: 'dinner', slot: 1 },
+      { day: 0, meal: 'dinner', slot: 2 },
+    ]);
   });
 });
