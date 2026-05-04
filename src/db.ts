@@ -16,7 +16,9 @@ export type MealSetting = {
   day: number;
   meal: MealType;
   enabled: boolean;
-  dishCount: number;
+  vegetableCount: number;
+  meatCount: number;
+  soupCount: number;
 };
 
 export type WeeklyPlan = {
@@ -56,6 +58,23 @@ class CookDb extends Dexie {
           .modify((dish) => {
             dish.mealTypes = dish.mealTypes?.length ? dish.mealTypes : ['dinner'];
             dish.category = dish.category ?? 'uncategorized';
+          });
+      });
+    this.version(4)
+      .stores({
+        dishes: '++id, name, lastCookedAt, category',
+        weeklyPlans: '++id, [day+meal+slot], day, meal, dishId',
+        mealSettings: '++id, [day+meal], day, meal',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<MealSetting & { dishCount?: number }, number>('mealSettings')
+          .toCollection()
+          .modify((setting) => {
+            setting.vegetableCount = setting.dishCount ?? 0;
+            setting.meatCount = 0;
+            setting.soupCount = 0;
+            delete setting.dishCount;
           });
       });
   }

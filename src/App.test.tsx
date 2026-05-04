@@ -14,7 +14,9 @@ function dish(overrides: Partial<Dish> & Pick<Dish, 'id' | 'name'>): Dish {
 function mealSetting(overrides: Partial<MealSetting> & Pick<MealSetting, 'day' | 'meal'>): MealSetting {
   return {
     enabled: true,
-    dishCount: 1,
+    vegetableCount: 1,
+    meatCount: 0,
+    soupCount: 0,
     ...overrides,
   };
 }
@@ -277,11 +279,11 @@ describe('App', () => {
     const savedSettings = mockState.mealSettingsBulkAdd.mock.calls[0][0] as MealSetting[];
 
     expect(savedSettings.filter((setting) => setting.enabled)).toEqual([
-      { day: 0, meal: 'dinner', enabled: true, dishCount: 1 },
-      { day: 1, meal: 'dinner', enabled: true, dishCount: 1 },
-      { day: 2, meal: 'dinner', enabled: true, dishCount: 1 },
-      { day: 3, meal: 'dinner', enabled: true, dishCount: 1 },
-      { day: 4, meal: 'dinner', enabled: true, dishCount: 1 },
+      { day: 0, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
+      { day: 1, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
+      { day: 2, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
+      { day: 3, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
+      { day: 4, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
     ]);
   });
 
@@ -296,8 +298,77 @@ describe('App', () => {
     expect(mockState.mealSettingsPut.mock.calls.at(-1)?.[0]).toMatchObject({ day: 0, meal: 'breakfast', enabled: true });
   });
 
+  test('turns an entire day off and reopens it with dinner only', async () => {
+    mockState.mealSettingsData = [
+      mealSetting({ id: 1, day: 0, meal: 'breakfast', enabled: true, vegetableCount: 0 }),
+      mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: true, vegetableCount: 2, meatCount: 1 }),
+      mealSetting({ id: 3, day: 0, meal: 'dinner', enabled: false }),
+    ];
+
+    render(<App />);
+    await openMealSettings();
+
+    const monday = screen.getByRole('group', { name: '週一排餐設定' });
+    fireEvent.click(within(monday).getByLabelText('週一開伙'));
+
+    await waitFor(() => expect(mockState.mealSettingsPut).toHaveBeenCalledTimes(3));
+    expect(mockState.mealSettingsPut.mock.calls.map((call) => call[0])).toEqual([
+      expect.objectContaining({ day: 0, meal: 'breakfast', enabled: false }),
+      expect.objectContaining({ day: 0, meal: 'lunch', enabled: false }),
+      expect.objectContaining({ day: 0, meal: 'dinner', enabled: false }),
+    ]);
+
+    mockState.mealSettingsData = mockState.mealSettingsData.map((setting) => ({ ...setting, enabled: false }));
+    mockState.mealSettingsPut.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: '本週菜單' }));
+    await openMealSettings();
+    fireEvent.click(within(screen.getByRole('group', { name: '週一排餐設定' })).getByLabelText('週一開伙'));
+
+    await waitFor(() => expect(mockState.mealSettingsPut).toHaveBeenCalledTimes(1));
+    expect(mockState.mealSettingsPut).toHaveBeenCalledWith(expect.objectContaining({ day: 0, meal: 'dinner', enabled: true }));
+  });
+
+  test('shows meal controls in one row and hides disabled meal options', async () => {
+    mockState.mealSettingsData = [
+      mealSetting({ id: 1, day: 0, meal: 'breakfast', enabled: true, vegetableCount: 0 }),
+      mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: true, vegetableCount: 1, meatCount: 1, soupCount: 1 }),
+      mealSetting({ id: 3, day: 0, meal: 'dinner', enabled: false }),
+    ];
+
+    render(<App />);
+    await openMealSettings();
+
+    const monday = screen.getByRole('group', { name: '週一排餐設定' });
+    const breakfastRow = within(monday).getByRole('group', { name: '週一早餐設定' });
+    const lunchRow = within(monday).getByRole('group', { name: '週一午餐設定' });
+    const dinnerRow = within(monday).getByRole('group', { name: '週一晚餐設定' });
+
+    expect(within(breakfastRow).getByText('固定1樣')).toBeInTheDocument();
+    expect(within(lunchRow).queryByText('1菜1肉1湯')).not.toBeInTheDocument();
+    expect(within(lunchRow).getByLabelText('週一午餐菜數')).toBeInTheDocument();
+    expect(within(lunchRow).getByLabelText('週一午餐肉數')).toBeInTheDocument();
+    expect(within(lunchRow).getByLabelText('週一午餐湯數')).toBeInTheDocument();
+    expect(within(dinnerRow).queryByText(/菜|肉|湯/)).not.toBeInTheDocument();
+    expect(within(dinnerRow).queryByLabelText('週一晚餐菜數')).not.toBeInTheDocument();
+    expect(within(monday).queryByLabelText('週一早餐菜數')).not.toBeInTheDocument();
+
+    fireEvent.change(within(lunchRow).getByLabelText('週一午餐菜數'), { target: { value: '0' } });
+
+    await waitFor(() => expect(mockState.mealSettingsPut).toHaveBeenCalled());
+    expect(mockState.mealSettingsPut.mock.calls.at(-1)?.[0]).toMatchObject({
+      day: 0,
+      meal: 'lunch',
+      vegetableCount: 0,
+      meatCount: 1,
+      soupCount: 1,
+    });
+  });
+
   test('generates the weekly menu from saved settings', async () => {
-    mockState.dishesData = [dish({ id: 1, name: '番茄炒蛋' })];
+    mockState.dishesData = [
+      dish({ id: 1, name: '早餐蛋餅', mealTypes: ['breakfast'], category: 'uncategorized' }),
+      dish({ id: 2, name: '番茄炒蛋', mealTypes: ['dinner'], category: 'vegetable' }),
+    ];
     mockState.mealSettingsData = [
       mealSetting({ id: 1, day: 0, meal: 'breakfast' }),
       mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: false }),
@@ -310,7 +381,7 @@ describe('App', () => {
     await waitFor(() => expect(mockState.weeklyPlansBulkAdd).toHaveBeenCalledTimes(1));
     expect(mockState.weeklyPlansBulkAdd.mock.calls[0][0]).toEqual([
       { day: 0, meal: 'breakfast', slot: 0, dishId: 1 },
-      { day: 0, meal: 'dinner', slot: 0, dishId: 1 },
+      { day: 0, meal: 'dinner', slot: 0, dishId: 2 },
     ]);
   });
 

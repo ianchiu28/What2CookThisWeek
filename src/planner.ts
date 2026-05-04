@@ -1,9 +1,11 @@
-import type { MealSetting, MealType, WeeklyPlan } from './db';
+import type { DishCategory, MealSetting, MealType, WeeklyPlan } from './db';
 
 export type PlannerDish = {
   id?: number;
   name: string;
   lastCookedAt?: number;
+  mealTypes: MealType[];
+  category: DishCategory;
 };
 
 export const DAYS = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'] as const;
@@ -24,25 +26,64 @@ export function createDefaultMealSettings(): MealSetting[] {
       day,
       meal: value,
       enabled: day < 5 && value === 'dinner',
-      dishCount: 1,
+      vegetableCount: value === 'dinner' ? 1 : 0,
+      meatCount: 0,
+      soupCount: 0,
+    })),
+  );
+}
+
+function matchingDishes(dishes: PlannerDish[], meal: MealType, category: DishCategory) {
+  return shuffle(dishes.filter((dish) => typeof dish.id === 'number' && dish.mealTypes.includes(meal) && dish.category === category));
+}
+
+type PlanSlot = WeeklyPlan & { category: DishCategory };
+
+function createSlots(setting: MealSetting, categoryCounts: Array<{ category: DishCategory; count: number }>): PlanSlot[] {
+  let slot = 0;
+
+  return categoryCounts.flatMap(({ category, count }) =>
+    Array.from({ length: count }, () => ({
+      day: setting.day,
+      meal: setting.meal,
+      slot: slot++,
+      category,
     })),
   );
 }
 
 export function generateWeeklyPlans(dishes: PlannerDish[], settings: MealSetting[]): WeeklyPlan[] {
-  const availableDishes = dishes.filter((dish) => typeof dish.id === 'number');
-
   return settings.flatMap((setting) => {
     if (!setting.enabled) return [];
 
-    const shuffled = shuffle(availableDishes);
+    if (setting.meal === 'breakfast') {
+      const dish = matchingDishes(dishes, setting.meal, 'uncategorized')[0];
+      return [
+        {
+          day: setting.day,
+          meal: setting.meal,
+          slot: 0,
+          ...(dish ? { dishId: dish.id } : {}),
+        },
+      ];
+    }
 
-    return Array.from({ length: setting.dishCount }, (_, slot) => {
-      const dish = shuffled[slot];
+    const slots = createSlots(setting, [
+      { category: 'vegetable', count: setting.vegetableCount },
+      { category: 'meat', count: setting.meatCount },
+      { category: 'soup', count: setting.soupCount },
+    ]);
+
+    const dishesByCategory = new Map<DishCategory, PlannerDish[]>([
+      ['vegetable', matchingDishes(dishes, setting.meal, 'vegetable')],
+      ['meat', matchingDishes(dishes, setting.meal, 'meat')],
+      ['soup', matchingDishes(dishes, setting.meal, 'soup')],
+    ]);
+
+    return slots.map(({ category, ...plan }) => {
+      const dish = dishesByCategory.get(category)?.shift();
       return {
-        day: setting.day,
-        meal: setting.meal,
-        slot,
+        ...plan,
         ...(dish ? { dishId: dish.id } : {}),
       };
     });

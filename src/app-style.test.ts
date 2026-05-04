@@ -75,4 +75,30 @@ describe('bottom app tabs styles', () => {
     expect(activeIndicatorRule).toContain('background: #f97316;');
     expect(activeIndicatorRule).toContain('height: 3px;');
   });
+
+  test('uses compact day cards and meal count controls for meal settings', () => {
+    expect(css).toContain('.meal-settings-card');
+    expect(css).toContain('.settings-day-header');
+    expect(css).toContain('.settings-day-disabled');
+    expect(css).toContain('.meal-setting-list');
+    expect(css).toContain('.meal-setting-row');
+    expect(css).toContain('.meal-count-panel');
+    expect(css).toContain('.count-field');
+    expect(css).toContain('.meal-warning');
+    expect(css).toContain('.switch-toggle');
+    expect(css).toContain('.meal-setting-main');
+    expect(css).toContain('.meal-summary');
+
+    const mealRowRule = css.match(/\.meal-setting-row \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const mealMainRule = css.match(/\.meal-setting-main \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const switchRule = css.match(/\.switch-toggle span \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const mealToggleRule = css.match(/\.meal-toggle \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+
+    expect(mealRowRule).toContain('display: grid;');
+    expect(mealMainRule).toContain('justify-content: space-between;');
+    expect(mealMainRule).toContain('grid-template-columns: auto minmax(0, 1fr);');
+    expect(switchRule).toContain('border-radius: 999px;');
+    expect(mealToggleRule).toContain('border-radius: 10px;');
+    expect(css).not.toContain('table-layout');
+  });
 });
