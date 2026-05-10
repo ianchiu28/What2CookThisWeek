@@ -524,9 +524,9 @@ describe('App', () => {
     const menuCard = menu.closest('section')!;
 
     expect(within(menuCard).getByText('週一')).toBeInTheDocument();
-    expect(within(menuCard).getByText('早餐')).toBeInTheDocument();
+    expect(within(menuCard).getByLabelText('早餐')).toHaveTextContent('早');
     expect(within(menuCard).getByText('番茄炒蛋')).toBeInTheDocument();
-    expect(within(menuCard).getByText('晚餐')).toBeInTheDocument();
+    expect(within(menuCard).getByLabelText('晚餐')).toHaveTextContent('晚');
     expect(within(menuCard).getByText('尚未安排')).toBeInTheDocument();
   });
 
@@ -583,11 +583,11 @@ describe('App', () => {
     const menu = await screen.findByRole('heading', { name: '本週菜單' });
     const menuCard = menu.closest('section')!;
 
-    const tomatoRow = within(menuCard).getByText('番茄炒蛋').closest('li')!;
-    expect(within(tomatoRow).getByText('番茄・蛋・蔥')).toBeInTheDocument();
+    const tomatoRow = within(menuCard).getByText('番茄炒蛋').closest('.menu-row')!;
+    expect(within(tomatoRow as HTMLElement).getByText('番茄・蛋・蔥')).toBeInTheDocument();
 
-    const veggieRow = within(menuCard).getByText('清炒青菜').closest('li')!;
-    expect(within(veggieRow).queryByText(/・/)).not.toBeInTheDocument();
+    const veggieRow = within(menuCard).getByText('清炒青菜').closest('.menu-row')!;
+    expect(within(veggieRow as HTMLElement).queryByText(/・/)).not.toBeInTheDocument();
   });
 
   test('renders generated meal slots in slot order', async () => {
@@ -600,8 +600,10 @@ describe('App', () => {
     render(<App />);
     const menu = await screen.findByRole('heading', { name: '本週菜單' });
     const menuCard = menu.closest('section')!;
-    const items = within(menuCard).getAllByRole('listitem').map((item) => item.textContent);
+    const dishNames = Array.from(menuCard.querySelectorAll('.menu-dish-name')).map(
+      (node) => node.textContent,
+    );
 
-    expect(items).toEqual(['第一道', '第二道']);
+    expect(dishNames).toEqual(['第一道', '第二道']);
   });
 });

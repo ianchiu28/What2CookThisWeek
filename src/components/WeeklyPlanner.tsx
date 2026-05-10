@@ -4,6 +4,18 @@ import { aggregateShoppingList } from '../ingredients';
 import { DAYS, MEAL_TYPES } from '../planner';
 import { ShoppingListModal } from './ShoppingListModal';
 
+const MEAL_PILL_LABELS: Record<MealType, string> = {
+  breakfast: '早',
+  lunch: '午',
+  dinner: '晚',
+};
+
+const MEAL_FULL_LABELS: Record<MealType, string> = {
+  breakfast: '早餐',
+  lunch: '午餐',
+  dinner: '晚餐',
+};
+
 type WeeklyPlannerProps = {
   dishes: Dish[];
   weeklyPlans: WeeklyPlan[];
@@ -11,16 +23,15 @@ type WeeklyPlannerProps = {
   canGenerate: boolean;
 };
 
-type VisibleMeal = {
+type VisibleRow = {
   meal: MealType;
-  label: string;
-  plans: WeeklyPlan[];
+  plan: WeeklyPlan;
 };
 
 type VisibleDay = {
   day: number;
   dayName: string;
-  meals: VisibleMeal[];
+  rows: VisibleRow[];
 };
 
 function planKey(day: number, meal: MealType) {
@@ -50,73 +61,87 @@ export function WeeklyPlanner({ dishes, weeklyPlans, onGenerate, canGenerate }: 
       plans.sort((a, b) => a.slot - b.slot);
     });
 
-    return DAYS.map((dayName, day) => ({
-      day,
-      dayName,
-      meals: MEAL_TYPES.map(({ value, label }) => ({
-        meal: value,
-        label,
-        plans: plansByMeal.get(planKey(day, value)) ?? [],
-      })).filter((meal) => meal.plans.length > 0),
-    })).filter((day) => day.meals.length > 0);
+    return DAYS.map((dayName, day) => {
+      const rows = MEAL_TYPES.flatMap(({ value }) =>
+        (plansByMeal.get(planKey(day, value)) ?? []).map((plan) => ({ meal: value, plan })),
+      );
+      return { day, dayName, rows };
+    }).filter((day) => day.rows.length > 0);
   }, [weeklyPlans]);
 
   const shoppingItems = useMemo(() => aggregateShoppingList(weeklyPlans, dishes), [weeklyPlans, dishes]);
   const hasPlans = weeklyPlans.length > 0;
 
   return (
-    <section className="card menu-card">
-      <div className="section-heading">
-        <h2>本週菜單</h2>
-        <div className="menu-actions">
+    <>
+      <section className="card menu-card">
+        <div className="section-heading">
+          <h2>本週菜單</h2>
           <button
             type="button"
-            className="neutral"
+            className="compact-button neutral"
+            aria-label="採買清單"
             disabled={!hasPlans}
             onClick={() => setShowShoppingList(true)}
           >
-            採買清單
-          </button>
-          <button type="button" onClick={onGenerate} disabled={!canGenerate}>
-            產生本週菜單
+            🛒 採買清單
           </button>
         </div>
-      </div>
-      {!canGenerate && <p className="muted">新增至少一道菜後就可以自動排菜。</p>}
-      {visibleDays.length === 0 ? (
-        <p className="muted">尚未產生菜單，請先確認排餐設定後產生本週菜單。</p>
-      ) : (
-        <div className="week-menu">
-          {visibleDays.map((day) => (
-            <div className="day-card" key={day.dayName}>
-              <strong>{day.dayName}</strong>
-              {day.meals.map((meal) => (
-                <div className="meal-block" key={meal.meal}>
-                  <span className="meal-label">{meal.label}</span>
-                  <ul className="menu-dishes">
-                    {meal.plans.map((plan) => {
-                      const dish = plan.dishId !== undefined ? dishesById.get(plan.dishId) : undefined;
-                      const name = dish?.name ?? '尚未安排';
-                      const ingredients = dish?.ingredients ?? [];
-                      return (
-                        <li key={`${plan.day}-${plan.meal}-${plan.slot}`}>
-                          <span className="dish-name">{name}</span>
-                          {ingredients.length > 0 && (
-                            <span className="dish-ingredients">{ingredients.join('・')}</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
+
+        {!canGenerate && <p className="menu-empty">新增至少一道菜後就可以自動排菜。</p>}
+
+        {canGenerate && visibleDays.length === 0 && (
+          <p className="menu-empty">尚未產生菜單，請按右下「產生本週菜單」。</p>
+        )}
+
+        {visibleDays.length > 0 && (
+          <div>
+            {visibleDays.map((day) => (
+              <div className="day-section" key={day.dayName}>
+                <div className="day-head">
+                  <span className="day-name">{day.dayName}</span>
+                  <span className="day-count">{day.rows.length} 道</span>
                 </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+                {day.rows.map(({ meal, plan }) => {
+                  const dish = plan.dishId !== undefined ? dishesById.get(plan.dishId) : undefined;
+                  const name = dish?.name ?? '尚未安排';
+                  const ingredients = dish?.ingredients ?? [];
+                  const isUnassigned = !dish;
+                  return (
+                    <div className="menu-row" key={`${plan.day}-${plan.meal}-${plan.slot}`}>
+                      <span className="menu-pill" aria-label={MEAL_FULL_LABELS[meal]}>
+                        {MEAL_PILL_LABELS[meal]}
+                      </span>
+                      <div>
+                        <div className={isUnassigned ? 'menu-dish-name unassigned' : 'menu-dish-name'}>
+                          {name}
+                        </div>
+                        {ingredients.length > 0 && (
+                          <div className="menu-dish-ing">{ingredients.join('・')}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <button
+        type="button"
+        className="menu-fab"
+        aria-label="產生本週菜單"
+        disabled={!canGenerate}
+        onClick={onGenerate}
+      >
+        {hasPlans ? '↻ 重新產生' : '產生本週菜單'}
+      </button>
+
       {showShoppingList && (
         <ShoppingListModal items={shoppingItems} onClose={() => setShowShoppingList(false)} />
       )}
-    </section>
+    </>
   );
 }
