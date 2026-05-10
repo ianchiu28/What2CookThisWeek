@@ -279,11 +279,11 @@ describe('App', () => {
     const savedSettings = mockState.mealSettingsBulkAdd.mock.calls[0][0] as MealSetting[];
 
     expect(savedSettings.filter((setting) => setting.enabled)).toEqual([
-      { day: 0, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 1, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 2, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 3, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 4, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
+      { day: 0, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 1, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 2, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 3, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 4, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
     ]);
   });
 
@@ -362,6 +362,23 @@ describe('App', () => {
       meatCount: 1,
       soupCount: 1,
     });
+  });
+
+  test('shows 未安排 placeholder for disabled meals on enabled days', async () => {
+    mockState.mealSettingsData = [
+      mealSetting({ id: 1, day: 0, meal: 'breakfast', enabled: true, vegetableCount: 0 }),
+      mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: false, vegetableCount: 0 }),
+      mealSetting({ id: 3, day: 0, meal: 'dinner', enabled: true, vegetableCount: 1 }),
+    ];
+
+    render(<App />);
+    await openMealSettings();
+
+    const monday = screen.getByRole('group', { name: '週一排餐設定' });
+    const lunchRow = within(monday).getByRole('group', { name: '週一午餐設定' });
+
+    expect(within(lunchRow).getByText('未安排')).toBeInTheDocument();
+    expect(within(lunchRow).queryByLabelText('週一午餐菜數')).not.toBeInTheDocument();
   });
 
   test('generates the weekly menu from saved settings', async () => {

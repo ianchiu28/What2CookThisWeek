@@ -26,8 +26,8 @@ export function createDefaultMealSettings(): MealSetting[] {
       day,
       meal: value,
       enabled: day < 5 && value === 'dinner',
-      vegetableCount: value === 'dinner' ? 1 : 0,
-      meatCount: 0,
+      vegetableCount: value === 'breakfast' ? 0 : 2,
+      meatCount: value === 'breakfast' ? 0 : 1,
       soupCount: 0,
     })),
   );

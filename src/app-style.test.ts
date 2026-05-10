@@ -76,29 +76,51 @@ describe('bottom app tabs styles', () => {
     expect(activeIndicatorRule).toContain('height: 3px;');
   });
 
-  test('uses compact day cards and meal count controls for meal settings', () => {
+  test('uses pill toggles and inline count chips for meal settings', () => {
     expect(css).toContain('.meal-settings-card');
     expect(css).toContain('.settings-day-header');
     expect(css).toContain('.settings-day-disabled');
     expect(css).toContain('.meal-setting-list');
-    expect(css).toContain('.meal-setting-row');
-    expect(css).toContain('.meal-count-panel');
-    expect(css).toContain('.count-field');
+    expect(css).toContain('.meal-row');
+    expect(css).toContain('.meal-pill');
+    expect(css).toContain('.count-list');
+    expect(css).toContain('.count-chip');
+    expect(css).toContain('.count-stepper');
+    expect(css).toContain('.empty-text');
     expect(css).toContain('.meal-warning');
     expect(css).toContain('.switch-toggle');
-    expect(css).toContain('.meal-setting-main');
     expect(css).toContain('.meal-summary');
 
-    const mealRowRule = css.match(/\.meal-setting-row \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
-    const mealMainRule = css.match(/\.meal-setting-main \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
-    const switchRule = css.match(/\.switch-toggle span \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
-    const mealToggleRule = css.match(/\.meal-toggle \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    expect(css).not.toContain('.meal-setting-row');
+    expect(css).not.toContain('.meal-count-panel');
+    expect(css).not.toContain('.count-field');
+    expect(css).not.toContain('.meal-setting-main');
+    expect(css).not.toContain('.meal-toggle');
 
-    expect(mealRowRule).toContain('display: grid;');
-    expect(mealMainRule).toContain('justify-content: space-between;');
-    expect(mealMainRule).toContain('grid-template-columns: auto minmax(0, 1fr);');
+    const mealRowRule = css.match(/\.meal-row \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const mealPillRule = css.match(/\.meal-pill \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const mealPillOffRule = css.match(/\.meal-pill\.off \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const countChipRule = css.match(/\.count-chip \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const countChipFocusRule = css.match(/\.count-chip:focus-within \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const countChipZeroRule = css.match(/\.count-chip\.zero input \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const stepperHiddenRule = css.match(/\.count-stepper \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const stepperVisibleRule = css.match(/\.count-chip:focus-within \.count-stepper \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+    const switchRule = css.match(/\.switch-toggle span \{(?<body>[\s\S]*?)\n\}/)?.groups?.body;
+
+    expect(mealRowRule).toContain('display: flex;');
+    expect(mealRowRule).toContain('justify-content: space-between;');
+    expect(mealPillRule).toContain('background: #f97316;');
+    expect(mealPillRule).toContain('border-radius: 999px;');
+    expect(mealPillOffRule).toContain('background: transparent;');
+    expect(mealPillOffRule).toContain('border-color: #fed7aa;');
+    expect(countChipRule).toContain('border-radius: 999px;');
+    expect(countChipRule).toContain('background: #fff;');
+    expect(countChipFocusRule).toContain('border-color: #f97316;');
+    expect(countChipFocusRule).toContain('box-shadow: 0 0 0 3px rgb(249 115 22 / 0.18);');
+    expect(countChipZeroRule).toContain('color: #c2855a;');
+    expect(stepperHiddenRule).toContain('display: none;');
+    expect(stepperVisibleRule).toContain('display: inline-flex;');
     expect(switchRule).toContain('border-radius: 999px;');
-    expect(mealToggleRule).toContain('border-radius: 10px;');
     expect(css).not.toContain('table-layout');
   });
 });

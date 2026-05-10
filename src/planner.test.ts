@@ -31,20 +31,29 @@ function setting(
 }
 
 describe('createDefaultMealSettings', () => {
-  test('enables only weekday dinners with one vegetable and no meat or soup', () => {
+  test('enables only weekday dinners and presets lunch/dinner counts to 2 vegetables and 1 meat', () => {
     const settings = createDefaultMealSettings();
 
     expect(settings).toHaveLength(21);
     expect(settings.filter((setting) => setting.enabled)).toEqual([
-      { day: 0, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 1, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 2, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 3, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
-      { day: 4, meal: 'dinner', enabled: true, vegetableCount: 1, meatCount: 0, soupCount: 0 },
+      { day: 0, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 1, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 2, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 3, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
+      { day: 4, meal: 'dinner', enabled: true, vegetableCount: 2, meatCount: 1, soupCount: 0 },
     ]);
     expect(settings.filter((setting) => setting.meal !== 'dinner').every((setting) => !setting.enabled)).toBe(true);
     expect(settings.filter((setting) => setting.day > 4).every((setting) => !setting.enabled)).toBe(true);
-    expect(settings.every((setting) => setting.meal === 'dinner' || setting.vegetableCount === 0)).toBe(true);
+    expect(
+      settings
+        .filter((setting) => setting.meal === 'lunch')
+        .every((setting) => setting.vegetableCount === 2 && setting.meatCount === 1 && setting.soupCount === 0),
+    ).toBe(true);
+    expect(
+      settings
+        .filter((setting) => setting.meal === 'breakfast')
+        .every((setting) => setting.vegetableCount === 0 && setting.meatCount === 0 && setting.soupCount === 0),
+    ).toBe(true);
   });
 });
 

@@ -77,40 +77,24 @@ export function MealSettings({ settings, onChangeSetting }: MealSettingsProps) {
                     const label = mealLabel(setting.meal);
 
                     return (
-                      <div className="meal-setting-row" key={setting.meal} role="group" aria-label={`${dayName}${label}設定`}>
-                        <div className="meal-setting-main">
-                          <label className="choice-chip meal-toggle">
-                            <input
-                              type="checkbox"
-                              aria-label={label}
-                              checked={setting.enabled}
-                              onChange={(event) => onChangeSetting({ ...setting, enabled: event.target.checked })}
-                            />
-                            {label}
-                          </label>
-                          {setting.enabled && setting.meal === 'breakfast' && <span className="meal-summary">固定1樣</span>}
-                          {setting.enabled && setting.meal !== 'breakfast' && (
-                            <div className="meal-count-panel" aria-label={`${dayName}${label}分類數量`}>
-                              {COUNT_FIELDS.map(({ field, label: countLabel }) => (
-                                <label className="count-field" key={field}>
-                                  <span>{countLabel}</span>
-                                  <input
-                                    aria-label={`${dayName}${label}${countLabel}數`}
-                                    type="number"
-                                    min="0"
-                                    value={setting[field]}
-                                    onChange={(event) =>
-                                      onChangeSetting({
-                                        ...setting,
-                                        [field]: Math.max(0, Number(event.target.value) || 0),
-                                      })
-                                    }
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                      <div className="meal-row" key={setting.meal} role="group" aria-label={`${dayName}${label}設定`}>
+                        <button
+                          type="button"
+                          className={setting.enabled ? 'meal-pill' : 'meal-pill off'}
+                          aria-label={label}
+                          aria-pressed={setting.enabled}
+                          onClick={() => onChangeSetting({ ...setting, enabled: !setting.enabled })}
+                        >
+                          {label}
+                        </button>
+
+                        {!setting.enabled && <span className="empty-text">未安排</span>}
+
+                        {setting.enabled && setting.meal === 'breakfast' && <span className="meal-summary">固定1樣</span>}
+
+                        {setting.enabled && setting.meal !== 'breakfast' && (
+                          <CountChips dayName={dayName} mealLabel={label} setting={setting} onChangeSetting={onChangeSetting} />
+                        )}
 
                         {setting.enabled && setting.meal !== 'breakfast' && mealTotal(setting) === 0 && (
                           <p className="meal-warning">這餐不會安排菜品</p>
@@ -125,5 +109,62 @@ export function MealSettings({ settings, onChangeSetting }: MealSettingsProps) {
         })}
       </div>
     </section>
+  );
+}
+
+type CountChipsProps = {
+  dayName: string;
+  mealLabel: string;
+  setting: MealSetting;
+  onChangeSetting: (setting: MealSetting) => Promise<void>;
+};
+
+function CountChips({ dayName, mealLabel, setting, onChangeSetting }: CountChipsProps) {
+  function update(field: CountField, next: number) {
+    const value = Math.max(0, Math.floor(Number.isFinite(next) ? next : 0));
+    if (value === setting[field]) return;
+    void onChangeSetting({ ...setting, [field]: value });
+  }
+
+  return (
+    <div className="count-list">
+      {COUNT_FIELDS.map(({ field, label: countLabel }) => {
+        const value = setting[field];
+        return (
+          <label
+            key={field}
+            className={value === 0 ? 'count-chip zero' : 'count-chip'}
+          >
+            <span className="lbl">{countLabel}</span>
+            <input
+              aria-label={`${dayName}${mealLabel}${countLabel}數`}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={value}
+              onChange={(event) => update(field, Number(event.target.value))}
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <span className="count-stepper" aria-hidden="true">
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => update(field, value + 1)}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => update(field, value - 1)}
+                disabled={value === 0}
+              >
+                ▼
+              </button>
+            </span>
+          </label>
+        );
+      })}
+    </div>
   );
 }

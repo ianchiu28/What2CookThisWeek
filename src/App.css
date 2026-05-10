@@ -429,28 +429,9 @@ p {
   transform: translateX(1.35rem);
 }
 
-.meal-toggle {
-  border-radius: 10px;
-  flex: 0 0 auto;
-}
-
 .meal-setting-list {
   display: grid;
   gap: 0.5rem;
-}
-
-.meal-setting-row {
-  align-items: stretch;
-  display: grid;
-  gap: 0.45rem;
-}
-
-.meal-setting-main {
-  align-items: center;
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: auto minmax(0, 1fr);
-  justify-content: space-between;
 }
 
 .meal-summary {
@@ -459,42 +440,164 @@ p {
   font-weight: 700;
 }
 
-.meal-count-panel {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  justify-content: flex-end;
-  min-width: 0;
-}
-
-.count-field {
-  align-items: center;
-  background: white;
-  border: 1px solid #fed7aa;
-  border-radius: 999px;
-  display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.25rem 0.3rem 0.25rem 0.55rem;
-}
-
-.count-field span {
-  color: #9a3412;
-  font-weight: 700;
-}
-
-.count-field input {
-  border-radius: 999px;
-  padding: 0.3rem 0.35rem;
-  text-align: center;
-  width: 3.2rem;
-}
-
 .meal-warning {
   color: #b91c1c;
   flex-basis: 100%;
   font-size: 0.86rem;
   margin: 0;
+}
+
+.meal-pill {
+  background: #f97316;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.4rem 0.95rem;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.meal-pill.off {
+  background: transparent;
+  border-color: #fed7aa;
+  color: #c2855a;
+  opacity: 0.7;
+}
+
+.meal-pill:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+.empty-text {
+  color: #c2855a;
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.meal-row {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.meal-row + .meal-row {
+  border-top: 1px dashed #fed7aa;
+}
+
+.count-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.count-chip {
+  align-items: center;
+  background: #fff;
+  border: 1.5px solid #fed7aa;
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: text;
+  display: inline-flex;
+  gap: 0.32rem;
+  height: 1.85rem;
+  justify-content: center;
+  min-width: 2.85rem;
+  padding: 0.3rem 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.count-chip .lbl {
+  color: #9a3412;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.count-chip input {
+  background: transparent;
+  border: 0;
+  color: #1f2937;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  outline: none;
+  padding: 0;
+  text-align: center;
+  width: 1.4rem;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.count-chip input::-webkit-outer-spin-button,
+.count-chip input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.count-chip.zero input {
+  color: #c2855a;
+}
+
+.count-chip:focus-within {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgb(249 115 22 / 0.18);
+  padding-right: 0.2rem;
+}
+
+.count-chip:focus-within.zero input {
+  color: #1f2937;
+}
+
+.count-stepper {
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: 0.05rem;
+}
+
+.count-chip:focus-within .count-stepper {
+  display: inline-flex;
+}
+
+.count-stepper button {
+  align-items: center;
+  background: #fff7ed;
+  border: 0;
+  border-radius: 4px;
+  color: #9a3412;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.6rem;
+  height: 0.72rem;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: relative;
+  width: 1.05rem;
+}
+
+.count-stepper button::after {
+  content: '';
+  inset: -0.4rem -0.5rem;
+  position: absolute;
+}
+
+.count-stepper button:hover {
+  background: #fed7aa;
+}
+
+.count-stepper button:disabled {
+  color: #fed7aa;
+  cursor: default;
 }
 
 .bottom-tabs {
@@ -557,20 +660,5 @@ p {
 
   .settings-day-header {
     display: flex;
-  }
-
-  .meal-setting-main {
-    align-items: stretch;
-    display: grid;
-    grid-template-columns: auto 1fr;
-  }
-
-  .meal-summary {
-    align-self: center;
-    justify-self: end;
-  }
-
-  .meal-toggle {
-    width: fit-content;
   }
 }
