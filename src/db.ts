@@ -9,6 +9,7 @@ export type Dish = {
   lastCookedAt?: number;
   mealTypes: MealType[];
   category: DishCategory;
+  ingredients: string[];
 };
 
 export type MealSetting = {
@@ -75,6 +76,20 @@ class CookDb extends Dexie {
             setting.meatCount = 0;
             setting.soupCount = 0;
             delete setting.dishCount;
+          });
+      });
+    this.version(5)
+      .stores({
+        dishes: '++id, name, lastCookedAt, category',
+        weeklyPlans: '++id, [day+meal+slot], day, meal, dishId',
+        mealSettings: '++id, [day+meal], day, meal',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<Dish, number>('dishes')
+          .toCollection()
+          .modify((dish) => {
+            dish.ingredients = dish.ingredients ?? [];
           });
       });
   }

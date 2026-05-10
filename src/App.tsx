@@ -38,7 +38,7 @@ export default function App() {
     loadData();
   }, []);
 
-  async function addDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory }) {
+  async function addDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory; ingredients: string[] }) {
     await db.dishes.add(dish);
     await loadData();
   }

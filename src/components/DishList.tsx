@@ -8,7 +8,7 @@ type CategoryFilter = DishCategory | 'all';
 
 type DishListProps = {
   dishes: Dish[];
-  onAddDish: (dish: { name: string; mealTypes: MealType[]; category: DishCategory }) => Promise<void>;
+  onAddDish: (dish: { name: string; mealTypes: MealType[]; category: DishCategory; ingredients: string[] }) => Promise<void>;
   onDeleteDish: (id: number) => Promise<void>;
   onUpdateDish: (dish: Dish) => Promise<void>;
 };
@@ -50,12 +50,12 @@ export function DishList({ dishes, onAddDish, onDeleteDish, onUpdateDish }: Dish
     setEditingDish(dish);
   }
 
-  async function handleAddDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory }) {
+  async function handleAddDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory; ingredients: string[] }) {
     await onAddDish(dish);
     setIsAddingDish(false);
   }
 
-  async function handleEditDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory }) {
+  async function handleEditDish(dish: { name: string; mealTypes: MealType[]; category: DishCategory; ingredients: string[] }) {
     if (!editingDish) return;
 
     await onUpdateDish({ ...editingDish, ...dish });

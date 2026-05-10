@@ -32,6 +32,7 @@ describe('dish metadata migration', () => {
         name: '番茄炒蛋',
         mealTypes: ['dinner'],
         category: 'uncategorized',
+        ingredients: [],
       },
     ]);
   });

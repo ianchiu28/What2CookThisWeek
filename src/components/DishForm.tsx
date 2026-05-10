@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import type { DishCategory, MealType } from '../db';
+import { parseIngredients } from '../ingredients';
 import { MEAL_TYPES } from '../planner';
 
 export const DISH_CATEGORIES: Array<{ value: DishCategory; label: string }> = [
@@ -13,6 +14,7 @@ export type DishFormValue = {
   name: string;
   mealTypes: MealType[];
   category: DishCategory;
+  ingredients: string[];
 };
 
 type DishFormProps = {
@@ -29,6 +31,7 @@ const defaultDish: DishFormValue = {
   name: '',
   mealTypes: ['dinner'],
   category: 'uncategorized',
+  ingredients: [],
 };
 
 export function DishForm({
@@ -43,6 +46,7 @@ export function DishForm({
   const [name, setName] = useState(initialDish.name);
   const [mealTypes, setMealTypes] = useState<MealType[]>(initialDish.mealTypes);
   const [category, setCategory] = useState<DishCategory>(initialDish.category);
+  const [ingredientsText, setIngredientsText] = useState(initialDish.ingredients.join('、'));
 
   const canSubmit = name.trim().length > 0 && mealTypes.length > 0;
 
@@ -57,10 +61,16 @@ export function DishForm({
     const trimmedName = name.trim();
     if (!trimmedName || mealTypes.length === 0) return;
 
-    await onSubmitDish({ name: trimmedName, mealTypes, category });
+    await onSubmitDish({
+      name: trimmedName,
+      mealTypes,
+      category,
+      ingredients: parseIngredients(ingredientsText),
+    });
     setName(initialDish.name);
     setMealTypes(initialDish.mealTypes);
     setCategory(initialDish.category);
+    setIngredientsText(initialDish.ingredients.join('、'));
   }
 
   return (
@@ -104,6 +114,16 @@ export function DishForm({
           ))}
         </div>
       </fieldset>
+
+      <label className="field">
+        <span>材料（可選）</span>
+        <textarea
+          value={ingredientsText}
+          onChange={(event) => setIngredientsText(event.target.value)}
+          placeholder="用空白、頓號、逗號分開，例如：番茄 蛋 蔥"
+          rows={2}
+        />
+      </label>
 
       <div className="modal-actions">
         {onCancel && (

@@ -104,6 +104,12 @@ p {
   margin-bottom: 0;
 }
 
+.menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .muted {
   color: #6b7280;
 }
@@ -341,6 +347,39 @@ p {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.menu-dishes li {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.menu-dishes .dish-name {
+  color: #1f2937;
+}
+
+.dish-ingredients {
+  color: #9a3412;
+  font-size: 0.82rem;
+}
+
+.shopping-list {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.shopping-list li {
+  border-bottom: 1px solid #ffedd5;
+  padding: 0.5rem 0.25rem;
+}
+
+.shopping-list li:last-child {
+  border-bottom: 0;
 }
 
 .meal-settings-card {
