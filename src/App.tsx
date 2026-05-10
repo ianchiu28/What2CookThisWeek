@@ -3,7 +3,7 @@ import { DishList } from './components/DishList';
 import { MealSettings } from './components/MealSettings';
 import { WeeklyPlanner } from './components/WeeklyPlanner';
 import { db, type Dish, type DishCategory, type MealSetting, type MealType, type WeeklyPlan } from './db';
-import { createDefaultMealSettings, generateWeeklyPlans } from './planner';
+import { createDefaultMealSettings, pickDishesForWeek } from './planner';
 
 type ActiveTab = 'menu' | 'dishes' | 'settings';
 
@@ -57,10 +57,12 @@ export default function App() {
   }
 
   async function generatePlans() {
-    const plans = generateWeeklyPlans(dishes, mealSettings);
-    await db.transaction('rw', db.weeklyPlans, async () => {
+    const now = Date.now();
+    const { plans, pickedDishIds } = pickDishesForWeek(dishes, mealSettings);
+    await db.transaction('rw', db.weeklyPlans, db.dishes, async () => {
       await db.weeklyPlans.clear();
       await db.weeklyPlans.bulkAdd(plans);
+      await Promise.all(pickedDishIds.map((id) => db.dishes.update(id, { lastCookedAt: now })));
     });
     await loadData();
   }

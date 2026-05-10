@@ -16,9 +16,6 @@ export const MEAL_TYPES: Array<{ value: MealType; label: string }> = [
   { value: 'dinner', label: '晚餐' },
 ];
 
-function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
-}
 
 export function createDefaultMealSettings(): MealSetting[] {
   return DAYS.flatMap((_, day) =>
@@ -33,8 +30,31 @@ export function createDefaultMealSettings(): MealSetting[] {
   );
 }
 
-function matchingDishes(dishes: PlannerDish[], meal: MealType, category: DishCategory) {
-  return shuffle(dishes.filter((dish) => typeof dish.id === 'number' && dish.mealTypes.includes(meal) && dish.category === category));
+function pickByRotation(candidates: PlannerDish[]): PlannerDish | undefined {
+  if (candidates.length === 0) return undefined;
+  return [...candidates]
+    .map((dish) => ({ dish, randomKey: Math.random() }))
+    .sort((a, b) => {
+      const keyA = a.dish.lastCookedAt ?? Number.NEGATIVE_INFINITY;
+      const keyB = b.dish.lastCookedAt ?? Number.NEGATIVE_INFINITY;
+      if (keyA !== keyB) return keyA - keyB;
+      return a.randomKey - b.randomKey;
+    })[0]?.dish;
+}
+
+function candidatesFor(
+  dishes: PlannerDish[],
+  meal: MealType,
+  category: DishCategory,
+  used: Set<number>,
+): PlannerDish[] {
+  return dishes.filter(
+    (dish) =>
+      typeof dish.id === 'number' &&
+      !used.has(dish.id) &&
+      dish.mealTypes.includes(meal) &&
+      dish.category === category,
+  );
 }
 
 type PlanSlot = WeeklyPlan & { category: DishCategory };
@@ -52,20 +72,35 @@ function createSlots(setting: MealSetting, categoryCounts: Array<{ category: Dis
   );
 }
 
-export function generateWeeklyPlans(dishes: PlannerDish[], settings: MealSetting[]): WeeklyPlan[] {
-  return settings.flatMap((setting) => {
-    if (!setting.enabled) return [];
+export type PickResult = {
+  plans: WeeklyPlan[];
+  pickedDishIds: number[];
+};
+
+export function pickDishesForWeek(dishes: PlannerDish[], settings: MealSetting[]): PickResult {
+  const plans: WeeklyPlan[] = [];
+  const pickedDishIds: number[] = [];
+  const usedDishIds = new Set<number>();
+
+  function placeSlot(plan: WeeklyPlan, candidates: PlannerDish[]) {
+    const chosen = pickByRotation(candidates);
+    plans.push({
+      ...plan,
+      ...(chosen ? { dishId: chosen.id } : {}),
+    });
+    if (chosen?.id !== undefined) {
+      usedDishIds.add(chosen.id);
+      pickedDishIds.push(chosen.id);
+    }
+  }
+
+  for (const setting of settings) {
+    if (!setting.enabled) continue;
 
     if (setting.meal === 'breakfast') {
-      const dish = matchingDishes(dishes, setting.meal, 'uncategorized')[0];
-      return [
-        {
-          day: setting.day,
-          meal: setting.meal,
-          slot: 0,
-          ...(dish ? { dishId: dish.id } : {}),
-        },
-      ];
+      const candidates = candidatesFor(dishes, 'breakfast', 'uncategorized', usedDishIds);
+      placeSlot({ day: setting.day, meal: setting.meal, slot: 0 }, candidates);
+      continue;
     }
 
     const slots = createSlots(setting, [
@@ -74,18 +109,15 @@ export function generateWeeklyPlans(dishes: PlannerDish[], settings: MealSetting
       { category: 'soup', count: setting.soupCount },
     ]);
 
-    const dishesByCategory = new Map<DishCategory, PlannerDish[]>([
-      ['vegetable', matchingDishes(dishes, setting.meal, 'vegetable')],
-      ['meat', matchingDishes(dishes, setting.meal, 'meat')],
-      ['soup', matchingDishes(dishes, setting.meal, 'soup')],
-    ]);
+    for (const { category, ...slot } of slots) {
+      const candidates = candidatesFor(dishes, setting.meal, category, usedDishIds);
+      placeSlot(slot, candidates);
+    }
+  }
 
-    return slots.map(({ category, ...plan }) => {
-      const dish = dishesByCategory.get(category)?.shift();
-      return {
-        ...plan,
-        ...(dish ? { dishId: dish.id } : {}),
-      };
-    });
-  });
+  return { plans, pickedDishIds };
+}
+
+export function generateWeeklyPlans(dishes: PlannerDish[], settings: MealSetting[]): WeeklyPlan[] {
+  return pickDishesForWeek(dishes, settings).plans;
 }

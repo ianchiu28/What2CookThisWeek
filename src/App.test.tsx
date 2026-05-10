@@ -36,6 +36,9 @@ const mockState = vi.hoisted(() => {
   const dishesPut = vi.fn(async (dish: Dish) => {
     mockState.dishesData = mockState.dishesData.map((item) => (item.id === dish.id ? dish : item));
   });
+  const dishesUpdate = vi.fn(async (id: number, changes: Partial<Dish>) => {
+    mockState.dishesData = mockState.dishesData.map((item) => (item.id === id ? { ...item, ...changes } : item));
+  });
   const weeklyPlansClear = vi.fn(async () => {
     weeklyPlansData = [];
   });
@@ -66,6 +69,7 @@ const mockState = vi.hoisted(() => {
     dishesAdd,
     dishesDelete,
     dishesPut,
+    dishesUpdate,
     weeklyPlansClear,
     weeklyPlansBulkAdd,
     mealSettingsBulkAdd,
@@ -80,6 +84,7 @@ vi.mock('./db', () => ({
       add: mockState.dishesAdd,
       delete: mockState.dishesDelete,
       put: mockState.dishesPut,
+      update: mockState.dishesUpdate,
     },
     weeklyPlans: {
       orderBy: () => ({ toArray: () => Promise.resolve(mockState.weeklyPlansData) }),
@@ -400,6 +405,68 @@ describe('App', () => {
       { day: 0, meal: 'breakfast', slot: 0, dishId: 1 },
       { day: 0, meal: 'dinner', slot: 0, dishId: 2 },
     ]);
+  });
+
+  test('updates lastCookedAt on dishes placed in the generated menu', async () => {
+    const fixedNow = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
+
+    mockState.dishesData = [
+      dish({ id: 1, name: '早餐蛋餅', mealTypes: ['breakfast'], category: 'uncategorized' }),
+      dish({ id: 2, name: '青菜', mealTypes: ['dinner'], category: 'vegetable' }),
+      dish({ id: 3, name: '不會被選的菜', mealTypes: ['lunch'], category: 'vegetable', lastCookedAt: 999 }),
+    ];
+    mockState.mealSettingsData = [
+      mealSetting({ id: 1, day: 0, meal: 'breakfast' }),
+      mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: false }),
+      mealSetting({ id: 3, day: 0, meal: 'dinner', vegetableCount: 1, meatCount: 0, soupCount: 0 }),
+    ];
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '產生本週菜單' }));
+
+    await waitFor(() => expect(mockState.dishesUpdate).toHaveBeenCalledTimes(2));
+    const updatedIds = mockState.dishesUpdate.mock.calls.map((call) => call[0]).sort();
+    expect(updatedIds).toEqual([1, 2]);
+    for (const call of mockState.dishesUpdate.mock.calls) {
+      expect(call[1]).toEqual({ lastCookedAt: fixedNow });
+    }
+
+    nowSpy.mockRestore();
+  });
+
+  test('rotates picks across consecutive generations', async () => {
+    const firstNow = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(firstNow);
+
+    mockState.dishesData = [
+      dish({ id: 1, name: '青菜A', mealTypes: ['dinner'], category: 'vegetable' }),
+      dish({ id: 2, name: '青菜B', mealTypes: ['dinner'], category: 'vegetable' }),
+    ];
+    mockState.mealSettingsData = [
+      mealSetting({ id: 1, day: 0, meal: 'breakfast', enabled: false }),
+      mealSetting({ id: 2, day: 0, meal: 'lunch', enabled: false }),
+      mealSetting({ id: 3, day: 0, meal: 'dinner', vegetableCount: 1, meatCount: 0, soupCount: 0 }),
+    ];
+
+    render(<App />);
+    const generateButton = await screen.findByRole('button', { name: '產生本週菜單' });
+
+    fireEvent.click(generateButton);
+    await waitFor(() => expect(mockState.weeklyPlansBulkAdd).toHaveBeenCalledTimes(1));
+    const firstPlans = mockState.weeklyPlansBulkAdd.mock.calls[0][0] as WeeklyPlan[];
+    const firstChoice = firstPlans[0].dishId!;
+    expect([1, 2]).toContain(firstChoice);
+
+    nowSpy.mockReturnValue(firstNow + 60_000);
+    fireEvent.click(generateButton);
+    await waitFor(() => expect(mockState.weeklyPlansBulkAdd).toHaveBeenCalledTimes(2));
+    const secondPlans = mockState.weeklyPlansBulkAdd.mock.calls[1][0] as WeeklyPlan[];
+    const secondChoice = secondPlans[0].dishId!;
+
+    expect(secondChoice).not.toBe(firstChoice);
+
+    nowSpy.mockRestore();
   });
 
   test('renders generated meals grouped under 本週菜單', async () => {
